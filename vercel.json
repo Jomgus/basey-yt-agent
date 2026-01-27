@@ -1,8 +1,6 @@
 {
   "rewrites": [
-    { "source": "/api/scout", "destination": "/api/index" },
-    { "source": "/api/analyze", "destination": "/api/index" },
-    { "source": "/api/generate", "destination": "/api/index" },
-    { "source": "/(.*)", "destination": "/api/index" }
+    { "source": "/api/(.*)", "destination": "/api/index.py" },
+    { "source": "/(.*)", "destination": "/api/index.py" }
   ]
 }

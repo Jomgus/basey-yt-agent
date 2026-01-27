@@ -1,7 +1,16 @@
+
 import os
 import psycopg2
 from flask import Flask, request, jsonify
 from googleapiclient.discovery import build
+
+@app.route('/api/scout', methods=['GET'])
+def run_scout():
+    # Trigger your scout logic here
+    from .scout import scout_competitors # Assuming scout.py is in the same folder
+    scout_competitors()
+    return jsonify({"status": "Scout triggered successfully"})
+
 
 app = Flask(__name__)
 
