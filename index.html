@@ -1,0 +1,57 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Basey YouTube Agent</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-slate-900 text-white font-sans min-h-screen flex flex-col items-center justify-center p-6">
+    <div class="max-w-2xl w-full bg-slate-800 rounded-2xl shadow-2xl p-8 border border-slate-700">
+        <h1 class="text-3xl font-bold mb-2 text-blue-400">Basey Intelligence</h1>
+        <p class="text-slate-400 mb-8">Competitive Benchmarking & Content Strategy Agent</p>
+
+        <div class="space-y-4">
+            <button onclick="triggerScout()" id="scoutBtn" class="w-full py-4 bg-blue-600 hover:bg-blue-500 rounded-xl font-bold text-lg transition-all transform hover:scale-[1.02] active:scale-95 shadow-lg">
+                🚀 Scout Competitor Trends
+            </button>
+            
+            <div id="status" class="hidden p-4 rounded-lg bg-slate-700 text-sm border border-slate-600 text-center animate-pulse">
+                Agent is scanning YouTube...
+            </div>
+        </div>
+
+        <div class="mt-8 pt-8 border-t border-slate-700">
+            <h2 class="text-xl font-semibold mb-4 text-slate-200">Current Strategy Focus</h2>
+            <ul class="space-y-3 text-slate-400">
+                <li class="flex items-center">✅ Automated Competitor Discovery</li>
+                <li class="flex items-center">✅ Velocity Snapshotting</li>
+                <li class="flex items-center">⌛ Content Remix Generator (Coming Soon)</li>
+            </ul>
+        </div>
+    </div>
+
+    <script>
+        async function triggerScout() {
+            const btn = document.getElementById('scoutBtn');
+            const status = document.getElementById('status');
+            
+            btn.disabled = true;
+            status.classList.remove('hidden');
+            btn.innerText = "Working...";
+
+            try {
+                const response = await fetch('/api/scout');
+                const data = await response.json();
+                alert("Scout Success: Competitors added to Neon SQL!");
+            } catch (err) {
+                alert("Error triggering scout. Check Vercel logs.");
+            } finally {
+                btn.disabled = false;
+                status.classList.add('hidden');
+                btn.innerText = "🚀 Scout Competitor Trends";
+            }
+        }
+    </script>
+</body>
+</html>
