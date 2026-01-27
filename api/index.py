@@ -2,6 +2,11 @@ import os
 import psycopg2
 from flask import Flask, request, jsonify, render_template_string
 from googleapiclient.discovery import build
+# FORCE IMPORT AT TOP FOR VERCEL BUILD
+try:
+    from groq import Groq
+except ImportError:
+    Groq = None
 
 app = Flask(__name__)
 
@@ -13,6 +18,7 @@ GROQ_API_KEY = os.getenv("GROQ_API_KEY")
 def get_db_connection():
     return psycopg2.connect(DATABASE_URL, sslmode='require')
 
+# --- THE EXECUTIVE INTERFACE (SIDE-PANEL VERSION) ---
 DASHBOARD_HTML = """
 <!DOCTYPE html>
 <html lang="en">
@@ -29,7 +35,6 @@ DASHBOARD_HTML = """
         .side-panel { transition: transform 0.4s cubic-bezier(0.4, 0, 0.2, 1); transform: translateX(100%); }
         .side-panel.open { transform: translateX(0); }
         .main-content { transition: margin-right 0.4s ease-in-out; }
-        .main-content.shrunk { margin-right: 400px; }
         ::-webkit-scrollbar { width: 4px; }
         ::-webkit-scrollbar-thumb { background: #444; border-radius: 10px; }
     </style>
@@ -115,12 +120,11 @@ DASHBOARD_HTML = """
                         </div>
                         <button onclick="openChat('Generate strategy for: ${item.title}')" class="px-6 py-3 btn-white rounded-xl text-xs font-black uppercase transition-all active:scale-95 shadow-md">Generate</button>
                     </div>`).join('');
-            } catch (e) { feed.innerHTML = "<div class='p-6 text-center text-gray-600 font-mono'>SYNCING...</div>"; }
+            } catch (e) { feed.innerHTML = "<div class='p-6 text-center text-gray-600 font-mono uppercase text-[10px]'>SYNCING_NEON_DATA...</div>"; }
         }
 
         function openChat(msg) {
             document.getElementById('sidePanel').classList.add('open');
-            document.getElementById('mainContainer').classList.add('shrunk');
             if(msg) {
                 document.getElementById('chatInput').value = msg;
                 sendMessage();
@@ -129,7 +133,6 @@ DASHBOARD_HTML = """
 
         function closeChat() { 
             document.getElementById('sidePanel').classList.remove('open');
-            document.getElementById('mainContainer').classList.remove('shrunk');
             document.getElementById('genActionContainer').classList.add('hidden');
         }
 
@@ -147,7 +150,7 @@ DASHBOARD_HTML = """
             history.scrollTop = history.scrollHeight;
 
             const loadingId = "loading-" + Date.now();
-            history.innerHTML += `<div id="${loadingId}" class="flex justify-start"><span class="chat-bubble-agent p-4 rounded-2xl italic text-gray-500 animate-pulse">Calculating strategy...</span></div>`;
+            history.innerHTML += `<div id="${loadingId}" class="flex justify-start"><span class="chat-bubble-agent p-4 rounded-2xl italic text-gray-500 animate-pulse text-xs">Analyst is calculating...</span></div>`;
             
             try {
                 const res = await fetch('/api/chat', {
@@ -157,7 +160,7 @@ DASHBOARD_HTML = """
                 });
                 const data = await res.json();
                 document.getElementById(loadingId).remove();
-                history.innerHTML += `<div class="flex justify-start"><span class="chat-bubble-agent p-4 rounded-2xl text-gray-200">${data.reply}</span></div>`;
+                history.innerHTML += `<div class="flex justify-start"><span class="chat-bubble-agent p-4 rounded-2xl text-gray-200 text-sm border border-white/5">${data.reply}</span></div>`;
                 
                 if (data.reply.includes("READY_TO_GENERATE")) {
                     genContainer.classList.remove('hidden');
@@ -188,20 +191,18 @@ DASHBOARD_HTML = """
 </html>
 """
 
-# --- BACKEND API ROUTES REMAIN UNCHANGED ---
 @app.route('/')
 def home():
     return render_template_string(DASHBOARD_HTML)
 
 @app.route('/api/chat', methods=['POST'])
 def chat():
-    try:
-        from groq import Groq
-        client = Groq(api_key=GROQ_API_KEY)
-    except Exception:
-        return jsonify({"reply": "System Error: Missing AI library."})
+    if Groq is None:
+        return jsonify({"reply": "System Error: Missing AI library in deployment."})
+    
     user_msg = request.json.get("message")
     try:
+        client = Groq(api_key=GROQ_API_KEY)
         completion = client.chat.completions.create(
             model="llama3-8b-8192",
             messages=[
