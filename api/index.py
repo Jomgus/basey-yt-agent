@@ -2,16 +2,18 @@ import os
 import psycopg2
 from flask import Flask, request, jsonify, render_template_string
 from googleapiclient.discovery import build
+from groq import Groq # Add this to requirements.txt
 
 app = Flask(__name__)
 
+# Credentials
 YOUTUBE_API_KEY = os.getenv("YOUTUBE_API_KEY")
 DATABASE_URL = os.getenv("DATABASE_URL")
+client = Groq(api_key=os.getenv("GROQ_API_KEY")) # Add GROQ_API_KEY to Vercel
 
 def get_db_connection():
     return psycopg2.connect(DATABASE_URL, sslmode='require')
 
-# --- THE "YouTube Muted" DASHBOARD ---
 DASHBOARD_HTML = """
 <!DOCTYPE html>
 <html lang="en">
@@ -20,114 +22,130 @@ DASHBOARD_HTML = """
     <title>Basey YT | Strategy</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
-        body { background-color: #1a1a1b; color: #d7dadc; }
+        body { background-color: #1a1a1b; color: #d7dadc; font-size: 14px; }
         .card-bg { background-color: #272729; border: 1px solid #343536; }
-        .accent-border { border-left: 4px solid #ff0000; }
+        .btn-white { background-color: #f1f1f1; color: #0f0f0f; }
     </style>
 </head>
-<body class="min-h-screen p-6 md:p-12 font-sans">
-    <div class="max-w-5xl mx-auto">
+<body class="p-4 md:p-8">
+    <div class="max-w-4xl mx-auto">
         
-        <header class="mb-12">
-            <h1 class="text-4xl font-black text-white tracking-tighter italic">BASEY YT <span class="text-red-600">●</span></h1>
-            <p class="text-gray-500 font-bold uppercase tracking-[0.3em] text-xs mt-2">Strategic Intelligence Agent // V1.0</p>
+        <header class="mb-6 flex justify-between items-end">
+            <div>
+                <h1 class="text-2xl font-black text-white italic tracking-tighter uppercase">Basey YT</h1>
+                <p class="text-[9px] text-gray-500 font-bold uppercase tracking-widest">Strategic Analyst Agent</p>
+            </div>
+            <div class="text-[9px] text-emerald-500 font-mono">SYSTEM_READY</div>
         </header>
 
-        <div class="card-bg rounded-3xl p-8 mb-10 flex flex-col md:flex-row items-center justify-between gap-8 shadow-2xl">
-            <div class="max-w-xl">
-                <h2 class="text-2xl font-bold text-white mb-2">Passive Discovery Engine</h2>
-                <p class="text-gray-400 text-lg">The agent is scanning the Texas insurance niche for high-velocity competitor content.</p>
+        <div class="card-bg rounded-2xl p-4 mb-6 flex items-center justify-between gap-4">
+            <div class="text-xs text-gray-400">
+                <span class="font-bold text-gray-200">Passive Discovery:</span> Scanning Texas insurance trends.
             </div>
-            <button onclick="triggerScout()" id="scoutBtn" class="bg-white text-black px-10 py-5 rounded-2xl font-black text-lg uppercase tracking-tight hover:bg-gray-200 transition-all active:scale-95 shadow-xl">
-                Manual Rescan
+            <button onclick="triggerScout()" id="scoutBtn" class="bg-white/10 hover:bg-white/20 px-4 py-2 rounded-lg text-[10px] font-bold uppercase tracking-widest transition-all">Manual Rescan</button>
+        </div>
+
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-3 mb-8">
+            <button onclick="openChat('Draft a script for ')" class="card-bg p-4 rounded-xl text-left hover:border-gray-500 transition-all">
+                <p class="text-[9px] font-bold text-red-500 uppercase mb-1">Production</p>
+                <h4 class="text-xs font-bold leading-tight">Draft Counter-Script</h4>
+            </button>
+            <button onclick="openChat('Analyze this competitor: ')" class="card-bg p-4 rounded-xl text-left hover:border-gray-500 transition-all">
+                <p class="text-[9px] font-bold text-red-500 uppercase mb-1">Strategy</p>
+                <h4 class="text-xs font-bold leading-tight">Competitor Analysis</h4>
+            </button>
+            <button onclick="openChat('Give me 5 hooks for ')" class="card-bg p-4 rounded-xl text-left hover:border-gray-500 transition-all">
+                <p class="text-[9px] font-bold text-red-500 uppercase mb-1">Creative</p>
+                <h4 class="text-xs font-bold leading-tight">Viral Hook Ideas</h4>
             </button>
         </div>
 
-        <section class="mb-16">
-            <h3 class="text-xs font-black text-gray-500 uppercase tracking-[0.3em] mb-6">AI Strategic Directions</h3>
-            <div id="promptContainer" class="grid grid-cols-1 md:grid-cols-3 gap-6">
-                <div class="card-bg p-8 rounded-3xl animate-pulse text-center text-gray-600">Generating Strategy...</div>
-            </div>
-        </section>
-
-        <section>
-            <h3 class="text-xs font-black text-gray-500 uppercase tracking-[0.3em] mb-6">Top Competitor Targets</h3>
-            <div id="feed" class="space-y-6">
-                </div>
-        </section>
-
-        <div id="toast" class="fixed bottom-12 left-1/2 -translate-x-1/2 card-bg px-10 py-5 rounded-3xl text-lg font-bold hidden border-red-600/50 shadow-2xl z-50">
-            ✅ SCAN COMPLETE. MEMORY REFRESHED.
+        <div class="space-y-3">
+            <p class="text-[9px] font-bold text-gray-600 uppercase tracking-widest mb-2">High-Velocity Targets</p>
+            <div id="feed" class="grid gap-2"></div>
         </div>
     </div>
 
-    <div id="modal" class="hidden fixed inset-0 bg-black/80 backdrop-blur-xl flex items-center justify-center p-6 z-50">
-        <div class="card-bg p-10 rounded-[40px] max-w-2xl w-full shadow-2xl">
-            <h2 class="text-3xl font-black mb-6 text-white uppercase tracking-tighter">Agent Execution</h2>
-            <div id="scriptContent" class="text-lg text-gray-300 leading-relaxed whitespace-pre-wrap bg-black/40 p-8 rounded-3xl mb-8 font-medium border border-white/5"></div>
-            <button onclick="closeModal()" class="w-full py-5 bg-white text-black rounded-2xl font-black text-xl uppercase tracking-tight hover:bg-gray-200 transition-all">Dismiss</button>
+    <div id="chatModal" class="hidden fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4 z-50">
+        <div class="card-bg w-full max-w-lg rounded-2xl overflow-hidden flex flex-col shadow-2xl">
+            <div class="p-4 border-b border-white/5 flex justify-between items-center bg-white/5">
+                <h3 class="font-bold text-sm uppercase tracking-widest">Agent Intelligence</h3>
+                <button onclick="closeChat()" class="text-gray-500 hover:text-white">✕</button>
+            </div>
+            <div id="chatHistory" class="p-4 h-64 overflow-y-auto space-y-4 text-xs">
+                <div class="bg-white/5 p-3 rounded-lg text-gray-300">How can I help you dominate this trend today, Tom?</div>
+            </div>
+            <div id="genActionContainer" class="p-4 hidden border-t border-white/5">
+                <button onclick="finalGenerate()" class="w-full py-3 btn-white rounded-xl font-black text-xs uppercase tracking-widest">🚀 Generate Final Video</button>
+            </div>
+            <div class="p-4 bg-black/20 flex gap-2">
+                <input id="chatInput" type="text" class="flex-1 bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-xs focus:outline-none focus:border-red-500" placeholder="Ask the agent...">
+                <button onclick="sendMessage()" class="bg-red-600 px-4 py-2 rounded-lg text-[10px] font-bold uppercase">Send</button>
+            </div>
         </div>
     </div>
 
     <script>
-        async function triggerScout() {
-            const btn = document.getElementById('scoutBtn');
-            const toast = document.getElementById('toast');
-            btn.innerText = "SCANNING...";
-            try { 
-                await fetch('/api/scout'); 
-                toast.classList.remove('hidden');
-                setTimeout(() => toast.classList.add('hidden'), 4000);
-                loadAnalysis(); 
-            } finally { btn.innerText = "MANUAL RESCAN"; }
-        }
-
+        let currentTarget = "";
+        
         async function loadAnalysis() {
             const feed = document.getElementById('feed');
-            const prompts = document.getElementById('promptContainer');
+            const res = await fetch('/api/analyze');
+            const data = await res.json();
+            currentTarget = data[0].title;
+            feed.innerHTML = data.map(item => `
+                <div class="card-bg p-4 rounded-xl flex justify-between items-center group">
+                    <div>
+                        <span class="text-[8px] font-black uppercase tracking-widest text-red-500">${item.rec}</span>
+                        <h4 class="text-xs font-bold text-gray-200">${item.title}</h4>
+                    </div>
+                    <button onclick="openChat('Video generation for: ${item.title}')" class="px-4 py-2 btn-white rounded-lg text-[10px] font-black uppercase transition-all active:scale-95">Generate</button>
+                </div>`).join('');
+        }
+
+        function openChat(msg) {
+            document.getElementById('chatModal').classList.remove('hidden');
+            if(msg) {
+                document.getElementById('chatInput').value = msg;
+                sendMessage();
+            }
+        }
+
+        function closeChat() { document.getElementById('chatModal').classList.add('hidden'); }
+
+        async function sendMessage() {
+            const input = document.getElementById('chatInput');
+            const history = document.getElementById('chatHistory');
+            const genContainer = document.getElementById('genActionContainer');
             
-            try {
-                const res = await fetch('/api/analyze');
-                const data = await res.json();
-                
-                // LARGE STRATEGY BLOCKS
-                const topVideo = data[0].title;
-                prompts.innerHTML = `
-                    <button onclick="generateAction('SCRIPT', '${topVideo}')" class="card-bg accent-border p-8 rounded-3xl text-left hover:bg-[#343536] transition-all group">
-                        <p class="text-[10px] font-black text-red-500 uppercase mb-2">Production</p>
-                        <h4 class="text-xl font-bold leading-tight group-hover:text-white">Draft Counter-Script for "${topVideo.substring(0,30)}..."</h4>
-                    </button>
-                    <button onclick="generateAction('ANALYSIS', '${topVideo}')" class="card-bg accent-border p-8 rounded-3xl text-left hover:bg-[#343536] transition-all group">
-                        <p class="text-[10px] font-black text-red-500 uppercase mb-2">Strategy</p>
-                        <h4 class="text-xl font-bold leading-tight group-hover:text-white">Why is this specific competitor winning right now?</h4>
-                    </button>
-                    <button onclick="generateAction('HOOKS', '${topVideo}')" class="card-bg accent-border p-8 rounded-3xl text-left hover:bg-[#343536] transition-all group">
-                        <p class="text-[10px] font-black text-red-500 uppercase mb-2">Creative</p>
-                        <h4 class="text-xl font-bold leading-tight group-hover:text-white">Generate 5 Viral Hooks for the Texas Market</h4>
-                    </button>
-                `;
+            if(!input.value) return;
 
-                // LARGE TARGET CARDS
-                feed.innerHTML = data.slice(0, 3).map(item => `
-                    <div class="card-bg p-8 rounded-[32px] flex flex-col md:flex-row justify-between items-center gap-8 group hover:border-gray-500 transition-all">
-                        <div class="flex-1">
-                            <span class="text-xs font-black uppercase tracking-[0.2em] text-red-500 mb-3 block">${item.rec}</span>
-                            <h4 class="text-2xl font-bold text-gray-100 leading-tight">${item.title}</h4>
-                        </div>
-                        <button onclick="generateAction('VIDEO', '${item.title}')" class="w-full md:w-auto px-10 py-5 bg-white text-black hover:bg-gray-200 rounded-2xl text-sm font-black uppercase tracking-tighter transition-all active:scale-95">
-                            Generate Video
-                        </button>
-                    </div>`).join('');
-            } catch (e) { feed.innerHTML = "Establishing secure link to Neon..."; }
+            history.innerHTML += `<div class="text-right"><span class="bg-blue-600/20 p-2 rounded-lg inline-block">${input.value}</span></div>`;
+            const userMsg = input.value;
+            input.value = "";
+
+            // Mock LLM Response for demo
+            setTimeout(() => {
+                history.innerHTML += `<div class="text-left"><span class="bg-white/5 p-2 rounded-lg inline-block italic">Agent is thinking...</span></div>`;
+                setTimeout(() => {
+                    history.lastChild.innerHTML = `<span class="bg-white/5 p-2 rounded-lg inline-block">I've analyzed that trend. Based on our conversation, I've prepared a 2026-ready hook. Ready to generate?</span>`;
+                    genContainer.classList.remove('hidden');
+                }, 1000);
+            }, 500);
         }
 
-        function generateAction(type, title) {
-            const modal = document.getElementById('modal');
-            const content = document.getElementById('scriptContent');
-            content.innerText = "AGENT PROCESS: " + type + "\\nCONTEXT: " + title + "\\n\\n[AI AGENT IS PROCESSING DATA IN NEON SQL...]\\n\\n1. Found growth outlier in Texas niche.\\n2. Writing script focused on 2026 Part B rates.\\n3. Ready for approval.";
-            modal.classList.remove('hidden');
+        function finalGenerate() {
+            alert("Video Generation Pipeline Started. Tom will receive a notification when the .mp4 is ready.");
+            closeChat();
         }
-        function closeModal() { document.getElementById('modal').classList.add('hidden'); }
+
+        async function triggerScout() {
+            document.getElementById('scoutBtn').innerText = "SCANNING...";
+            await fetch('/api/scout');
+            loadAnalysis();
+            document.getElementById('scoutBtn').innerText = "MANUAL RESCAN";
+        }
+
         loadAnalysis();
     </script>
 </body>
