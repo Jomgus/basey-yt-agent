@@ -3,53 +3,58 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Basey YouTube Agent</title>
+    <title>Basey Intelligence Agent</title>
     <script src="https://cdn.tailwindcss.com"></script>
 </head>
-<body class="bg-slate-900 text-white font-sans min-h-screen flex flex-col items-center justify-center p-6">
-    <div class="max-w-2xl w-full bg-slate-800 rounded-2xl shadow-2xl p-8 border border-slate-700">
-        <h1 class="text-3xl font-bold mb-2 text-blue-400">Basey Intelligence</h1>
-        <p class="text-slate-400 mb-8">Competitive Benchmarking & Content Strategy Agent</p>
+<body class="bg-slate-900 text-white min-h-screen p-8">
+    <div class="max-w-4xl mx-auto">
+        <header class="mb-12">
+            <h1 class="text-4xl font-bold text-blue-400">Basey Intelligence</h1>
+            <p class="text-slate-400 mt-2">Strategic Analyst Agent • Competitor Discovery Mode</p>
+        </header>
 
-        <div class="space-y-4">
-            <button onclick="triggerScout()" id="scoutBtn" class="w-full py-4 bg-blue-600 hover:bg-blue-500 rounded-xl font-bold text-lg transition-all transform hover:scale-[1.02] active:scale-95 shadow-lg">
-                🚀 Scout Competitor Trends
-            </button>
-            
-            <div id="status" class="hidden p-4 rounded-lg bg-slate-700 text-sm border border-slate-600 text-center animate-pulse">
-                Agent is scanning YouTube...
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-12">
+            <div class="bg-slate-800 p-6 rounded-2xl border border-slate-700 shadow-xl">
+                <h2 class="text-xl font-semibold mb-4 text-blue-300">Passive Discovery</h2>
+                <p class="text-sm text-slate-400 mb-6">Triggers the agent to scout YouTube for trending insurance content.</p>
+                <button onclick="triggerScout()" id="scoutBtn" class="w-full py-3 bg-blue-600 hover:bg-blue-500 rounded-xl font-bold transition-all shadow-lg active:scale-95">
+                    🚀 Run Scout Discovery
+                </button>
+            </div>
+
+            <div class="bg-slate-800 p-6 rounded-2xl border border-slate-700 shadow-xl">
+                <h2 class="text-xl font-semibold mb-4 text-emerald-400">Agent Brain Status</h2>
+                <ul class="space-y-3 text-sm text-slate-300">
+                    <li class="flex items-center">✅ Memory: Neon Cloud SQL Active</li>
+                    <li class="flex items-center">✅ API: Discovery Worker Online</li>
+                    <li class="flex items-center">⌛ Content: Logic Priming...</li>
+                </ul>
             </div>
         </div>
 
-        <div class="mt-8 pt-8 border-t border-slate-700">
-            <h2 class="text-xl font-semibold mb-4 text-slate-200">Current Strategy Focus</h2>
-            <ul class="space-y-3 text-slate-400">
-                <li class="flex items-center">✅ Automated Competitor Discovery</li>
-                <li class="flex items-center">✅ Velocity Snapshotting</li>
-                <li class="flex items-center">⌛ Content Remix Generator (Coming Soon)</li>
-            </ul>
+        <div id="statusBox" class="hidden p-4 rounded-xl bg-slate-700 border border-slate-600 text-center animate-pulse">
+            Scouting YouTube competitors...
         </div>
     </div>
 
     <script>
         async function triggerScout() {
             const btn = document.getElementById('scoutBtn');
-            const status = document.getElementById('status');
-            
+            const box = document.getElementById('statusBox');
             btn.disabled = true;
-            status.classList.remove('hidden');
             btn.innerText = "Working...";
+            box.classList.remove('hidden');
 
             try {
-                const response = await fetch('/api/scout');
-                const data = await response.json();
-                alert("Scout Success: Competitors added to Neon SQL!");
-            } catch (err) {
-                alert("Error triggering scout. Check Vercel logs.");
+                const res = await fetch('/api/scout');
+                const data = await res.json();
+                alert(data.message || "Scout Complete!");
+            } catch (e) {
+                alert("Check Vercel Logs - Database Relation Error?");
             } finally {
                 btn.disabled = false;
-                status.classList.add('hidden');
-                btn.innerText = "🚀 Scout Competitor Trends";
+                btn.innerText = "🚀 Run Scout Discovery";
+                box.classList.add('hidden');
             }
         }
     </script>
