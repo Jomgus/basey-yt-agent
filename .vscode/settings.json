@@ -1,0 +1,15 @@
+{
+    "sqltools.connections": [
+        {
+            "ssh": "Disabled",
+            "previewLimit": 50,
+            "server": "localhost",
+            "port": 5432,
+            "driver": "PostgreSQL",
+            "name": "YouTube Sandbox",
+            "database": "youtube_data",
+            "username": "admin"
+        }
+    ],
+    "python-envs.pythonProjects": []
+}
