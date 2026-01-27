@@ -59,6 +59,3 @@ def get_analysis():
         # Fallback if the view isn't populated yet
         return jsonify([{"title": "Initial discovery required...", "rec": "WAITING"}])
 
-@app.route('/')
-def home():
-    return "API Online."
