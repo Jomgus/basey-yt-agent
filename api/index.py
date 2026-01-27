@@ -13,7 +13,6 @@ GROQ_API_KEY = os.getenv("GROQ_API_KEY")
 def get_db_connection():
     return psycopg2.connect(DATABASE_URL, sslmode='require')
 
-# --- THE EXECUTIVE INTERFACE ---
 DASHBOARD_HTML = """
 <!DOCTYPE html>
 <html lang="en">
@@ -22,18 +21,22 @@ DASHBOARD_HTML = """
     <title>Basey YT | Strategy Hub</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
-        body { background-color: #1a1a1b; color: #d7dadc; font-size: 15px; }
+        body { background-color: #1a1a1b; color: #d7dadc; font-size: 15px; overflow-x: hidden; }
         .card-bg { background-color: #272729; border: 1px solid #343536; }
         .btn-white { background-color: #f1f1f1; color: #0f0f0f; }
         .chat-bubble-agent { background-color: #343536; border: 1px solid #444; }
         .chat-bubble-user { background-color: #dc2626; color: white; }
-        ::-webkit-scrollbar { width: 6px; }
+        .side-panel { transition: transform 0.4s cubic-bezier(0.4, 0, 0.2, 1); transform: translateX(100%); }
+        .side-panel.open { transform: translateX(0); }
+        .main-content { transition: margin-right 0.4s ease-in-out; }
+        .main-content.shrunk { margin-right: 400px; }
+        ::-webkit-scrollbar { width: 4px; }
         ::-webkit-scrollbar-thumb { background: #444; border-radius: 10px; }
     </style>
 </head>
-<body class="p-6 md:p-12">
-    <div class="max-w-5xl mx-auto">
-        
+<body class="p-6 md:p-12 flex">
+    
+    <div id="mainContainer" class="main-content flex-1 max-w-5xl mx-auto">
         <header class="mb-8 flex justify-between items-end">
             <div>
                 <h1 class="text-3xl font-black text-white italic tracking-tighter uppercase">Basey YT</h1>
@@ -54,47 +57,47 @@ DASHBOARD_HTML = """
 
         <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-10">
             <button onclick="openChat('Draft a counter-script for the current top trend.')" class="card-bg p-6 rounded-3xl text-left hover:border-gray-400 transition-all group">
-                <p class="text-[10px] font-black text-red-600 uppercase mb-2 group-hover:text-red-500">Production</p>
+                <p class="text-[10px] font-black text-red-600 uppercase mb-2">Production</p>
                 <h4 class="text-sm font-bold leading-tight text-gray-200">Draft Counter-Script</h4>
             </button>
             <button onclick="openChat('Why are competitors winning in the Texas market right now?')" class="card-bg p-6 rounded-3xl text-left hover:border-gray-400 transition-all group">
-                <p class="text-[10px] font-black text-red-600 uppercase mb-2 group-hover:text-red-500">Strategy</p>
+                <p class="text-[10px] font-black text-red-600 uppercase mb-2">Strategy</p>
                 <h4 class="text-sm font-bold leading-tight text-gray-200">Competitor Analysis</h4>
             </button>
             <button onclick="openChat('Give me 5 viral hooks for insurance shorts.')" class="card-bg p-6 rounded-3xl text-left hover:border-gray-400 transition-all group">
-                <p class="text-[10px] font-black text-red-600 uppercase mb-2 group-hover:text-red-500">Creative</p>
+                <p class="text-[10px] font-black text-red-600 uppercase mb-2">Creative</p>
                 <h4 class="text-sm font-bold leading-tight text-gray-200">Viral Hook Ideas</h4>
             </button>
         </div>
 
         <div class="space-y-4">
             <p class="text-xs font-black text-gray-600 uppercase tracking-[0.3em] mb-4 px-1">Strategic Action Feed</p>
-            <div id="feed" class="grid gap-3">
-                </div>
+            <div id="feed" class="grid gap-3"></div>
         </div>
     </div>
 
-    <div id="chatModal" class="hidden fixed inset-0 bg-black/70 backdrop-blur-md flex items-center justify-center p-4 z-50">
-        <div class="card-bg w-full max-w-xl rounded-[32px] overflow-hidden flex flex-col shadow-2xl h-[600px] border-[#444]">
-            <div class="p-5 border-b border-white/5 flex justify-between items-center bg-white/5">
-                <div>
-                    <h3 class="font-bold text-xs uppercase tracking-widest text-white">Agent Intelligence</h3>
-                    <p class="text-[9px] text-gray-500 font-mono">ENCRYPTED_LINK_ESTABLISHED</p>
-                </div>
-                <button onclick="closeChat()" class="text-gray-500 hover:text-white text-xl">✕</button>
+    <div id="sidePanel" class="side-panel fixed top-0 right-0 h-full w-[400px] card-bg border-l border-[#444] shadow-2xl z-50 flex flex-col">
+        <div class="p-6 border-b border-white/5 flex justify-between items-center bg-white/5">
+            <div>
+                <h3 class="font-bold text-xs uppercase tracking-widest text-white">Agent Intelligence</h3>
+                <p class="text-[9px] text-gray-500 font-mono">ENCRYPTED_SIDE_LINK</p>
             </div>
-            <div id="chatHistory" class="p-6 flex-1 overflow-y-auto space-y-5">
-                <div class="chat-bubble-agent p-4 rounded-2xl text-gray-300 max-w-[85%] text-sm">
-                    Analysis complete. I've mapped the top 3 trends in your niche. How shall we proceed with the video generation, Tom?
-                </div>
+            <button onclick="closeChat()" class="text-gray-500 hover:text-white text-xl">✕</button>
+        </div>
+        
+        <div id="chatHistory" class="p-6 flex-1 overflow-y-auto space-y-5">
+            <div class="chat-bubble-agent p-4 rounded-2xl text-gray-300 text-sm">
+                Strategic link established. How shall we execute on these Texas trends today, Tom?
             </div>
-            <div id="genActionContainer" class="p-6 hidden border-t border-white/5 bg-white/5">
-                <button onclick="finalGenerate()" class="w-full py-5 btn-white rounded-2xl font-black text-xs uppercase tracking-widest shadow-2xl hover:bg-white transition-all">🚀 Generate Final Video</button>
-            </div>
-            <div class="p-5 bg-black/30 flex gap-3">
-                <input id="chatInput" type="text" onkeypress="handleKey(event)" class="flex-1 bg-white/5 border border-white/10 rounded-2xl px-5 py-4 text-sm focus:outline-none focus:border-red-600 transition-all" placeholder="Message the agent...">
-                <button onclick="sendMessage()" class="bg-red-600 px-6 py-4 rounded-2xl text-xs font-bold uppercase hover:bg-red-500 transition-all text-white">Send</button>
-            </div>
+        </div>
+
+        <div id="genActionContainer" class="p-6 hidden bg-white/5 border-t border-white/5">
+            <button onclick="finalGenerate()" class="w-full py-4 btn-white rounded-2xl font-black text-xs uppercase tracking-widest shadow-2xl hover:bg-white transition-all">🚀 Generate Video Now</button>
+        </div>
+
+        <div class="p-5 bg-black/30 flex gap-3">
+            <input id="chatInput" type="text" onkeypress="handleKey(event)" class="flex-1 bg-white/5 border border-white/10 rounded-2xl px-5 py-4 text-sm focus:outline-none focus:border-red-600 transition-all" placeholder="Message the agent...">
+            <button onclick="sendMessage()" class="bg-red-600 px-6 py-4 rounded-2xl text-xs font-bold uppercase hover:bg-red-500 transition-all text-white">Send</button>
         </div>
     </div>
 
@@ -112,11 +115,12 @@ DASHBOARD_HTML = """
                         </div>
                         <button onclick="openChat('Generate strategy for: ${item.title}')" class="px-6 py-3 btn-white rounded-xl text-xs font-black uppercase transition-all active:scale-95 shadow-md">Generate</button>
                     </div>`).join('');
-            } catch (e) { feed.innerHTML = "<div class='p-6 text-center text-gray-600 font-mono'>ESTABLISHING NEON_LINK...</div>"; }
+            } catch (e) { feed.innerHTML = "<div class='p-6 text-center text-gray-600 font-mono'>SYNCING...</div>"; }
         }
 
         function openChat(msg) {
-            document.getElementById('chatModal').classList.remove('hidden');
+            document.getElementById('sidePanel').classList.add('open');
+            document.getElementById('mainContainer').classList.add('shrunk');
             if(msg) {
                 document.getElementById('chatInput').value = msg;
                 sendMessage();
@@ -124,7 +128,8 @@ DASHBOARD_HTML = """
         }
 
         function closeChat() { 
-            document.getElementById('chatModal').classList.add('hidden');
+            document.getElementById('sidePanel').classList.remove('open');
+            document.getElementById('mainContainer').classList.remove('shrunk');
             document.getElementById('genActionContainer').classList.add('hidden');
         }
 
@@ -142,7 +147,7 @@ DASHBOARD_HTML = """
             history.scrollTop = history.scrollHeight;
 
             const loadingId = "loading-" + Date.now();
-            history.innerHTML += `<div id="${loadingId}" class="flex justify-start"><span class="chat-bubble-agent p-4 rounded-2xl italic text-gray-500 animate-pulse">Analyst is calculating...</span></div>`;
+            history.innerHTML += `<div id="${loadingId}" class="flex justify-start"><span class="chat-bubble-agent p-4 rounded-2xl italic text-gray-500 animate-pulse">Calculating strategy...</span></div>`;
             
             try {
                 const res = await fetch('/api/chat', {
@@ -158,13 +163,13 @@ DASHBOARD_HTML = """
                     genContainer.classList.remove('hidden');
                 }
             } catch (err) {
-                document.getElementById(loadingId).innerHTML = "<span class='text-red-500'>Link unstable. Check Vercel logs.</span>";
+                document.getElementById(loadingId).innerHTML = "<span class='text-red-500 font-mono text-[10px] uppercase'>ERROR: LINK_DROPPED</span>";
             }
             history.scrollTop = history.scrollHeight;
         }
 
         function finalGenerate() {
-            alert("Video Rendering Logic Initiated. Tom will receive an email with the download link.");
+            alert("Video Generation Pipeline Started.");
             closeChat();
         }
 
@@ -183,8 +188,7 @@ DASHBOARD_HTML = """
 </html>
 """
 
-# --- THE BACKEND LOGIC ---
-
+# --- BACKEND API ROUTES REMAIN UNCHANGED ---
 @app.route('/')
 def home():
     return render_template_string(DASHBOARD_HTML)
@@ -196,7 +200,6 @@ def chat():
         client = Groq(api_key=GROQ_API_KEY)
     except Exception:
         return jsonify({"reply": "System Error: Missing AI library."})
-
     user_msg = request.json.get("message")
     try:
         completion = client.chat.completions.create(
