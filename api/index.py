@@ -20,49 +20,45 @@ DASHBOARD_HTML = """
     <title>Basey YT | Intelligence</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
-        body { background-color: #0f0f0f; color: #f1f1f1; }
-        .yt-card { background-color: #1e1e1e; border: 1px solid #333; }
-        .yt-red { background-color: #ff0000; }
-        .yt-muted { color: #aaaaaa; }
+        body { background-color: #1a1a1b; color: #d7dadc; }
+        .yt-card { background-color: #272729; border: 1px solid #343536; }
+        .prompt-btn { background-color: #343536; border: 1px solid #474849; }
+        .prompt-btn:hover { background-color: #474849; border-color: #818384; }
     </style>
 </head>
 <body class="min-h-screen p-4 md:p-8 font-sans">
-    <div class="max-w-3xl mx-auto">
+    <div class="max-w-4xl mx-auto">
+        
         <header class="flex justify-between items-center mb-10">
-            <h1 class="text-2xl font-bold flex items-center gap-2">
-                <span class="text-red-600">●</span> Basey YT
+            <h1 class="text-xl font-bold flex items-center gap-2 tracking-tight">
+                <span class="text-red-500 text-2xl">■</span> BASEY YT
             </h1>
             <button onclick="triggerScout()" id="scoutBtn" class="text-[10px] tracking-widest uppercase font-bold text-gray-500 hover:text-white transition-all">Manual Rescan</button>
         </header>
 
-        <div class="yt-card rounded-2xl p-6 mb-8">
-            <div class="flex items-start gap-4">
-                <div class="w-10 h-10 rounded-full bg-red-600/20 flex items-center justify-center text-red-500 font-bold">B</div>
-                <div class="flex-1">
-                    <p class="text-xs font-bold text-red-500 uppercase mb-1">Agent Intelligence</p>
-                    <div id="agentChat" class="text-sm leading-relaxed text-gray-300">
-                        Analyzing YouTube environment... I am currently tracking 10 insurance competitors. I have identified 3 specific outliers that are "Winning" based on engagement velocity.
-                    </div>
-                </div>
+        <div class="mb-12">
+            <p class="text-[10px] font-bold text-gray-500 uppercase tracking-[0.2em] mb-4">Recommended Strategic Actions</p>
+            <div id="promptContainer" class="grid grid-cols-1 md:grid-cols-3 gap-3">
+                <div class="prompt-btn p-4 rounded-xl text-xs text-gray-400 animate-pulse text-center">Analyst is generating prompts...</div>
             </div>
         </div>
 
         <div class="space-y-4">
-            <h3 class="text-sm font-bold text-gray-500 uppercase tracking-widest mb-4">Strategic Action Feed</h3>
-            <div id="feed" class="grid gap-3">
+            <h3 class="text-[10px] font-bold text-gray-500 uppercase tracking-[0.2em] mb-4">High-Velocity Targets</h3>
+            <div id="feed" class="grid gap-2">
                 </div>
         </div>
 
-        <div id="toast" class="fixed bottom-10 left-1/2 -translate-x-1/2 yt-card px-6 py-3 rounded-full text-sm font-bold hidden border-red-600/50 shadow-2xl">
-            Scan Complete. Memory Updated.
+        <div id="toast" class="fixed bottom-10 left-1/2 -translate-x-1/2 yt-card px-8 py-4 rounded-2xl text-sm font-bold hidden border-red-500/30 shadow-2xl transition-all">
+            ✅ Scan Complete. Intelligence Refreshed.
         </div>
     </div>
 
-    <div id="modal" class="hidden fixed inset-0 bg-black/90 flex items-center justify-center p-4 z-50">
-        <div class="yt-card p-8 rounded-2xl max-w-lg w-full">
-            <h2 class="text-xl font-bold mb-4">Content Direction</h2>
-            <pre id="scriptContent" class="text-xs text-gray-400 whitespace-pre-wrap bg-black/50 p-4 rounded-xl mb-6 font-mono"></pre>
-            <button onclick="closeModal()" class="w-full py-3 yt-muted bg-neutral-800 hover:bg-neutral-700 rounded-xl font-bold transition-all">Dismiss</button>
+    <div id="modal" class="hidden fixed inset-0 bg-black/60 backdrop-blur-md flex items-center justify-center p-4 z-50">
+        <div class="yt-card p-8 rounded-3xl max-w-lg w-full shadow-2xl">
+            <h2 class="text-xl font-bold mb-4 text-white">Agent Output</h2>
+            <pre id="scriptContent" class="text-xs text-gray-400 whitespace-pre-wrap bg-black/30 p-5 rounded-2xl mb-6 font-mono border border-white/5"></pre>
+            <button onclick="closeModal()" class="w-full py-4 bg-white text-black rounded-2xl font-bold hover:bg-gray-200 transition-all">Dismiss</button>
         </div>
     </div>
 
@@ -70,43 +66,54 @@ DASHBOARD_HTML = """
         async function triggerScout() {
             const btn = document.getElementById('scoutBtn');
             const toast = document.getElementById('toast');
-            btn.innerText = "Scanning...";
+            btn.innerText = "SCANNING...";
             try { 
                 await fetch('/api/scout'); 
                 toast.classList.remove('hidden');
                 setTimeout(() => toast.classList.add('hidden'), 3000);
                 loadAnalysis(); 
-            } finally { btn.innerText = "Manual Rescan"; }
+            } finally { btn.innerText = "MANUAL RESCAN"; }
         }
 
         async function loadAnalysis() {
             const feed = document.getElementById('feed');
-            const chat = document.getElementById('agentChat');
+            const prompts = document.getElementById('promptContainer');
+            
             try {
                 const res = await fetch('/api/analyze');
                 const data = await res.json();
                 
-                // Update Chat based on findings
-                chat.innerText = `I've analyzed the niche. "${data[0].title}" is the primary growth outlier. I recommend prioritizing a remix of this hook to capture current search momentum in the Texas area.`;
+                // Inject Top 3 Strategic Prompts (Mocked logic for demo)
+                const topVideo = data[0].title;
+                prompts.innerHTML = `
+                    <button onclick="generateAction('Draft a counter-script for ${topVideo}')" class="prompt-btn p-4 rounded-xl text-left text-xs font-medium hover:text-white transition-all">
+                        "Draft a counter-script for the ${topVideo.substring(0,20)}... trend."
+                    </button>
+                    <button onclick="generateAction('Analyze why ${topVideo} is winning')" class="prompt-btn p-4 rounded-xl text-left text-xs font-medium hover:text-white transition-all">
+                        "Analyze why '${topVideo.substring(0,20)}...' is currently winning."
+                    </button>
+                    <button onclick="generateAction('Generate 3 Texas Hook variations')" class="prompt-btn p-4 rounded-xl text-left text-xs font-medium hover:text-white transition-all">
+                        "Generate 3 Texas-specific 'Hook' variations for this niche."
+                    </button>
+                `;
 
                 feed.innerHTML = data.slice(0, 3).map(item => `
-                    <div class="yt-card p-5 rounded-xl flex justify-between items-center group hover:bg-[#2a2a2a] transition-all">
+                    <div class="yt-card p-5 rounded-2xl flex justify-between items-center group hover:border-gray-500 transition-all">
                         <div>
                             <div class="flex items-center gap-2 mb-1">
-                                <span class="w-1.5 h-1.5 bg-red-600 rounded-full"></span>
-                                <span class="text-[10px] font-bold uppercase tracking-widest text-gray-500 group-hover:text-red-500">${item.rec}</span>
+                                <span class="text-[9px] font-black uppercase tracking-widest text-red-500">${item.rec}</span>
                             </div>
-                            <h4 class="text-md font-medium text-gray-200">${item.title}</h4>
+                            <h4 class="text-sm font-medium text-gray-200">${item.title}</h4>
                         </div>
-                        <button onclick="generateVideo('${item.title}')" class="px-5 py-2.5 bg-white text-black hover:bg-gray-200 rounded-lg text-xs font-bold transition-all">Generate Video</button>
+                        <button onclick="generateAction('Full Video Script for: ${item.title}')" class="px-5 py-2.5 bg-white text-black hover:bg-gray-200 rounded-xl text-[10px] font-black uppercase tracking-tighter transition-all">Generate Video</button>
                     </div>`).join('');
             } catch (e) { feed.innerHTML = "Syncing memory..."; }
         }
 
-        function generateVideo(title) {
+        function generateAction(action) {
             const modal = document.getElementById('modal');
             const content = document.getElementById('scriptContent');
-            content.innerText = "LLM ANALYSIS FOR: " + title + "\\n\\nHOOK: 'Why every Texan is googling {topic} right now...'\\n\\nSCRIPT: Focusing on rate comparisons for 2026. Keep energy high for first 3 seconds.";
+            content.innerText = "AGENT BRAIN // STRATEGIC OUTPUT\\n\\nACTION: " + action + "\\n\\nRESULT: [The LLM will generate the full script or analysis here based on the data in Neon SQL.]";
             modal.classList.remove('hidden');
         }
         function closeModal() { document.getElementById('modal').classList.add('hidden'); }
