@@ -190,20 +190,42 @@ def chat():
         return jsonify({"reply": "System Error: Missing AI library."})
     
     user_msg = request.json.get("message")
+    
+    # --- NEW: FEED THE DATABASE TO THE BRAIN ---
+    try:
+        conn = get_db_connection(); cur = conn.cursor()
+        cur.execute("SELECT title, engagement_rate FROM v_strategic_benchmarks LIMIT 3")
+        rows = cur.fetchall()
+        # Create a string of the actual data
+        db_context = "\\n".join([f"- {r[0]} (Engagement: {r[1]}%)" for r in rows])
+        cur.close(); conn.close()
+    except:
+        db_context = "No data found in database yet."
+
     try:
         client = Groq(api_key=GROQ_API_KEY)
-        # CHANGED: Updated model to llama-3.1-8b-instant
         completion = client.chat.completions.create(
-            model="llama-3.1-8b-instant",
+            model="llama3-8b-8192",
             messages=[
-                {"role": "system", "content": "You are the Basey YT Strategic Analyst. You are talking to Tom. Be brief, authoritative, and helpful. If he agrees to a video idea or asks to generate, you MUST include the phrase READY_TO_GENERATE in your reply."},
+                {
+                    "role": "system", 
+                    "content": f"""You are the Basey YT Strategic Analyst. 
+                    You only speak based on the following REAL database data:
+                    {db_context}
+                    
+                    Rules:
+                    1. If the user asks about 'competitors' or 'database', refer ONLY to the list above.
+                    2. Your goal is to help Tom (insurance expert) remix these specific titles.
+                    3. Be brief and authoritative.
+                    4. If Tom agrees to a plan, end with: READY_TO_GENERATE."""
+                },
                 {"role": "user", "content": user_msg}
             ]
         )
         return jsonify({"reply": completion.choices[0].message.content})
     except Exception as e:
         return jsonify({"reply": f"Brain offline: {str(e)}"})
-
+    
 @app.route('/api/scout', methods=['GET'])
 def run_scout():
     try:
