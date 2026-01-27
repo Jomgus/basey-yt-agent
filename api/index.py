@@ -17,7 +17,7 @@ def sync_data():
     video_id = request.args.get('video_id', 'C6a7iLnAMlQ')
     try:
         # 1. Fetch from YouTube
-        youtube = build("youtube", "v3", developerKey=YOUTUBE_API_KEY)
+        youtube = build("youtube", "v3", developerKey=YOUTUBE_API_KEY, cache_discovery=False)
         yt_request = youtube.videos().list(part="snippet,statistics", id=video_id)
         response = yt_request.execute()
 
