@@ -3,60 +3,91 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Basey Intelligence Agent</title>
+    <title>Basey Strategic Intelligence</title>
     <script src="https://cdn.tailwindcss.com"></script>
 </head>
-<body class="bg-slate-900 text-white min-h-screen p-8">
+<body class="bg-slate-900 text-white min-h-screen p-6 md:p-12">
     <div class="max-w-4xl mx-auto">
-        <header class="mb-12">
-            <h1 class="text-4xl font-bold text-blue-400">Basey Intelligence</h1>
-            <p class="text-slate-400 mt-2">Strategic Analyst Agent • Competitor Discovery Mode</p>
+        <header class="flex justify-between items-center mb-12">
+            <div>
+                <h1 class="text-4xl font-extrabold text-blue-400 tracking-tight">Basey Intelligence</h1>
+                <p class="text-slate-400 mt-1">Strategic Analyst Agent • V1.0 Prototype</p>
+            </div>
+            <div class="hidden md:block text-right">
+                <span class="px-3 py-1 rounded-full bg-emerald-500/10 text-emerald-400 text-xs font-mono border border-emerald-500/20">AGENT_ACTIVE</span>
+            </div>
         </header>
 
-        <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-12">
-            <div class="bg-slate-800 p-6 rounded-2xl border border-slate-700 shadow-xl">
-                <h2 class="text-xl font-semibold mb-4 text-blue-300">Passive Discovery</h2>
-                <p class="text-sm text-slate-400 mb-6">Triggers the agent to scout YouTube for trending insurance content.</p>
-                <button onclick="triggerScout()" id="scoutBtn" class="w-full py-3 bg-blue-600 hover:bg-blue-500 rounded-xl font-bold transition-all shadow-lg active:scale-95">
+        <div class="bg-slate-800 rounded-3xl p-8 border border-slate-700 shadow-2xl mb-8">
+            <div class="flex flex-col md:flex-row md:items-center justify-between gap-6">
+                <div class="max-w-md">
+                    <h2 class="text-2xl font-bold mb-2">Passive Discovery</h2>
+                    <p class="text-slate-400 text-sm">Triggers the agent to scout the niche for high-velocity competitor content.</p>
+                </div>
+                <button onclick="triggerScout()" id="scoutBtn" class="bg-blue-600 hover:bg-blue-500 text-white px-8 py-4 rounded-2xl font-bold transition-all transform active:scale-95 shadow-lg whitespace-nowrap">
                     🚀 Run Scout Discovery
                 </button>
             </div>
-
-            <div class="bg-slate-800 p-6 rounded-2xl border border-slate-700 shadow-xl">
-                <h2 class="text-xl font-semibold mb-4 text-emerald-400">Agent Brain Status</h2>
-                <ul class="space-y-3 text-sm text-slate-300">
-                    <li class="flex items-center">✅ Memory: Neon Cloud SQL Active</li>
-                    <li class="flex items-center">✅ API: Discovery Worker Online</li>
-                    <li class="flex items-center">⌛ Content: Logic Priming...</li>
-                </ul>
-            </div>
         </div>
 
-        <div id="statusBox" class="hidden p-4 rounded-xl bg-slate-700 border border-slate-600 text-center animate-pulse">
-            Scouting YouTube competitors...
+        <div class="grid grid-cols-1 gap-6">
+            <h3 class="text-xl font-bold text-slate-200 flex items-center gap-2">
+                <span class="w-2 h-2 bg-orange-500 rounded-full animate-pulse"></span>
+                Strategic Action Feed
+            </h3>
+            
+            <div id="feed" class="space-y-4">
+                <div class="p-6 bg-slate-800/50 rounded-2xl border border-slate-700 animate-pulse text-slate-500">
+                    Waiting for Scout data to analyze patterns...
+                </div>
+            </div>
         </div>
     </div>
 
     <script>
         async function triggerScout() {
             const btn = document.getElementById('scoutBtn');
-            const box = document.getElementById('statusBox');
+            btn.innerText = "Scouting YouTube...";
             btn.disabled = true;
-            btn.innerText = "Working...";
-            box.classList.remove('hidden');
 
             try {
-                const res = await fetch('/api/scout');
-                const data = await res.json();
-                alert(data.message || "Scout Complete!");
+                await fetch('/api/scout');
+                alert("Scout Complete: Competitors saved to Neon SQL.");
+                loadAnalysis();
             } catch (e) {
-                alert("Check Vercel Logs - Database Relation Error?");
+                alert("Scout failed. Check API Key.");
             } finally {
-                btn.disabled = false;
                 btn.innerText = "🚀 Run Scout Discovery";
-                box.classList.add('hidden');
+                btn.disabled = false;
             }
         }
+
+        async function loadAnalysis() {
+            const feed = document.getElementById('feed');
+            try {
+                const res = await fetch('/api/analyze');
+                const data = await res.json();
+                
+                if (data.length === 0) return;
+
+                feed.innerHTML = data.map(item => `
+                    <div class="p-6 bg-slate-800 rounded-2xl border border-slate-700 flex flex-col md:flex-row justify-between items-start md:items-center gap-4 hover:border-blue-500/50 transition-colors">
+                        <div>
+                            <span class="text-[10px] font-black uppercase tracking-widest text-orange-400 bg-orange-400/10 px-2 py-1 rounded-md">${item.rec}</span>
+                            <h4 class="text-lg font-semibold mt-2 text-slate-100">${item.title}</h4>
+                        </div>
+                        <button class="w-full md:w-auto px-6 py-3 bg-slate-700 hover:bg-slate-600 rounded-xl text-sm font-bold transition-colors">
+                            Generate Script
+                        </button>
+                    </div>
+                `).join('');
+            } catch (e) {
+                console.error("Analysis engine warming up...");
+            }
+        }
+
+        // Auto-load on entry
+        loadAnalysis();
     </script>
 </body>
 </html>

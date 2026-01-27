@@ -3,62 +3,65 @@ import psycopg2
 from flask import Flask, request, jsonify
 from googleapiclient.discovery import build
 
-# --- STEP 1: INITIALIZE APP FIRST ---
 app = Flask(__name__)
 
-# --- STEP 2: IMPORTS ---
-try:
-    # This relative import is required for Vercel's structure
-    from .scout import scout_competitors
-except ImportError:
-    # Fallback for local testing
-    from scout import scout_competitors
-
-# Credentials
+# --- CONFIG ---
 YOUTUBE_API_KEY = os.getenv("YOUTUBE_API_KEY")
 DATABASE_URL = os.getenv("DATABASE_URL")
 
 def get_db_connection():
     return psycopg2.connect(DATABASE_URL, sslmode='require')
 
-# --- STEP 3: ROUTES ---
+# --- AGENT CAPABILITY 1: DISCOVERY (SCOUT) ---
 @app.route('/api/scout', methods=['GET'])
 def run_scout():
     try:
-        scout_competitors()
-        return jsonify({"status": "Success", "message": "Scout synced competitors to Neon."})
-    except Exception as e:
-        return jsonify({"error": f"Scout failed: {str(e)}"}), 500
-
-@app.route('/api/sync', methods=['GET'])
-def sync_data():
-    video_id = request.args.get('video_id', 'C6a7iLnAMlQ')
-    try:
         youtube = build("youtube", "v3", developerKey=YOUTUBE_API_KEY, cache_discovery=False)
-        yt_request = youtube.videos().list(part="snippet,statistics", id=video_id)
-        response = yt_request.execute()
-
-        if not response['items']:
-            return jsonify({"error": "Video not found"}), 404
-
-        stats = response['items'][0]['statistics']
-        title = response['items'][0]['snippet']['title']
+        # Search for trending insurance topics
+        request = youtube.search().list(
+            q="Texas life insurance tips",
+            part="snippet",
+            type="video",
+            maxResults=10,
+            order="viewCount"
+        )
+        response = request.execute()
 
         conn = get_db_connection()
         cur = conn.cursor()
-        cur.execute("""
-            INSERT INTO youtube_video_metrics (video_id, title, view_count, like_count, comment_count)
-            VALUES (%s, %s, %s, %s, %s)
-            ON CONFLICT (video_id, captured_at) DO UPDATE SET view_count = EXCLUDED.view_count;
-        """, (video_id, title, int(stats.get('viewCount', 0)), int(stats.get('likeCount', 0)), int(stats.get('commentCount', 0))))
+        for item in response.get('items', []):
+            cur.execute("""
+                INSERT INTO youtube_benchmarks (video_id, title)
+                VALUES (%s, %s) ON CONFLICT (video_id) DO NOTHING;
+            """, (item['id']['videoId'], item['snippet']['title']))
         conn.commit()
         cur.close()
         conn.close()
-
-        return jsonify({"status": "success", "video": title})
+        return jsonify({"status": "Success", "message": "Scout identified 10 new competitors."})
     except Exception as e:
-        return jsonify({"error": str(e)}), 500
+        return jsonify({"error": f"Scout failed: {str(e)}"}), 500
+
+# --- AGENT CAPABILITY 2: STRATEGIC ANALYSIS ---
+@app.route('/api/analyze', methods=['GET'])
+def get_analysis():
+    try:
+        conn = get_db_connection()
+        cur = conn.cursor()
+        # Pulling from the Strategic View we created in Neon
+        cur.execute("""
+            SELECT title, agent_recommendation 
+            FROM v_strategic_benchmarks 
+            ORDER BY engagement_rate DESC LIMIT 3
+        """)
+        rows = cur.fetchall()
+        
+        analysis = [{"title": r[0], "rec": r[1]} for r in rows]
+        cur.close()
+        conn.close()
+        return jsonify(analysis)
+    except Exception as e:
+        return jsonify([]) # Return empty if view isn't primed yet
 
 @app.route('/')
 def home():
-    return "Agent Brain is Online. Use /api/scout to discover trends."
+    return "Basey Agent Online."
