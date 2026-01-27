@@ -2,37 +2,36 @@ import os
 import psycopg2
 from flask import Flask, request, jsonify
 from googleapiclient.discovery import build
-# IMPORTANT: Ensure scout.py is in the same /api folder
-try:
-    from .scout import scout_competitors
-except ImportError:
-    # This handles local testing vs Vercel production
-    from scout import scout_competitors
 
+# --- STEP 1: INITIALIZE APP FIRST ---
 app = Flask(__name__)
 
-# Credentials from Vercel Environment Variables
+# --- STEP 2: IMPORTS ---
+try:
+    # This relative import is required for Vercel's structure
+    from .scout import scout_competitors
+except ImportError:
+    # Fallback for local testing
+    from scout import scout_competitors
+
+# Credentials
 YOUTUBE_API_KEY = os.getenv("YOUTUBE_API_KEY")
 DATABASE_URL = os.getenv("DATABASE_URL")
 
 def get_db_connection():
     return psycopg2.connect(DATABASE_URL, sslmode='require')
 
+# --- STEP 3: ROUTES ---
 @app.route('/api/scout', methods=['GET'])
 def run_scout():
-    """Trigger the passive competitor discovery"""
     try:
         scout_competitors()
-        return jsonify({
-            "status": "Success", 
-            "message": "Scout has identified new competitors and saved them to Neon."
-        })
+        return jsonify({"status": "Success", "message": "Scout synced competitors to Neon."})
     except Exception as e:
         return jsonify({"error": f"Scout failed: {str(e)}"}), 500
 
 @app.route('/api/sync', methods=['GET'])
 def sync_data():
-    """Manually sync metrics for a specific video ID"""
     video_id = request.args.get('video_id', 'C6a7iLnAMlQ')
     try:
         youtube = build("youtube", "v3", developerKey=YOUTUBE_API_KEY, cache_discovery=False)
@@ -51,15 +50,15 @@ def sync_data():
             INSERT INTO youtube_video_metrics (video_id, title, view_count, like_count, comment_count)
             VALUES (%s, %s, %s, %s, %s)
             ON CONFLICT (video_id, captured_at) DO UPDATE SET view_count = EXCLUDED.view_count;
-        """, (video_id, title, int(stats.get('viewCount', 0)), int(stats.get('like_count', 0)), int(stats.get('comment_count', 0))))
+        """, (video_id, title, int(stats.get('viewCount', 0)), int(stats.get('likeCount', 0)), int(stats.get('commentCount', 0))))
         conn.commit()
         cur.close()
         conn.close()
 
-        return jsonify({"status": "success", "video": title, "msg": "Metrics updated in Neon"})
+        return jsonify({"status": "success", "video": title})
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 
 @app.route('/')
 def home():
-    return "Agent is Online. Use /api/scout to find competitors or /api/sync to track metrics."
+    return "Agent Brain is Online. Use /api/scout to discover trends."
