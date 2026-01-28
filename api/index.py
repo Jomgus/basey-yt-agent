@@ -205,16 +205,50 @@ def chat():
 def run_scout():
     try:
         youtube = build("youtube", "v3", developerKey=YOUTUBE_API_KEY, cache_discovery=False)
-        request_yt = youtube.search().list(q="Texas life insurance trends", part="snippet", type="video", maxResults=10, order="viewCount")
-        res = request_yt.execute()
-        conn = get_db_connection(); cur = conn.cursor()
-        for item in res.get('items', []):
-            cur.execute("INSERT INTO youtube_benchmarks (video_id, title) VALUES (%s, %s) ON CONFLICT (video_id) DO NOTHING;", (item['id']['videoId'], item['snippet']['title']))
-        conn.commit(); cur.close(); conn.close()
-        return jsonify({"status": "Success"})
+        
+        # STEP 1: Search for the videos
+        search_request = youtube.search().list(
+            q="Texas insurance trends",
+            part="snippet",
+            type="video",
+            maxResults=10,
+            order="viewCount"
+        )
+        search_res = search_request.execute()
+        
+        video_ids = [item['id']['videoId'] for item in search_res.get('items', [])]
+        
+        # STEP 2: Fetch the Stats (Views, Likes) for those IDs
+        stats_request = youtube.videos().list(
+            part="snippet,statistics",
+            id=",".join(video_ids)
+        )
+        stats_res = stats_request.execute()
+
+        conn = get_db_connection()
+        cur = conn.cursor()
+        
+        for item in stats_res.get('items', []):
+            v_id = item['id']
+            v_title = item['snippet']['title']
+            stats = item['statistics']
+            
+            # Save to Benchmarks
+            cur.execute("INSERT INTO youtube_benchmarks (video_id, title) VALUES (%s, %s) ON CONFLICT (video_id) DO NOTHING;", (v_id, v_title))
+            
+            # Save to Metrics
+            cur.execute("""
+                INSERT INTO youtube_video_metrics (video_id, title, view_count, like_count, comment_count)
+                VALUES (%s, %s, %s, %s, %s)
+                ON CONFLICT (video_id, captured_at) DO NOTHING;
+            """, (v_id, v_title, int(stats.get('viewCount', 0)), int(stats.get('likeCount', 0)), int(stats.get('commentCount', 0))))
+            
+        conn.commit()
+        cur.close(); conn.close()
+        return jsonify({"status": "Success", "message": f"Scouted and synced {len(video_ids)} videos."})
     except Exception as e:
         return jsonify({"error": str(e)}), 500
-
+    
 @app.route('/api/analyze', methods=['GET'])
 def get_analysis():
     try:
